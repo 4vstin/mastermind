@@ -1,0 +1,507 @@
+import turtle, time, random
+
+# Variables
+clicked = ""
+click_delay = time.time()
+color_selected = ""
+row = 9
+gamein_progress = False
+
+# Lists
+buttons = list()
+board = list()
+color_pieces = list()
+info_pieces = list()
+colors = ["red", "blue", "green", "yellow", "white", "black"]
+board_size = [4, 10]
+code = list()
+code_pieces = list()
+unused = list()
+arrow_list = list()
+texts = list()
+
+# The screen/canvas
+screen = turtle.Screen()
+screen.setup(1200, 900)
+screen.title("Mastermind")
+screen.tracer(0)
+screen.bgcolor("white")
+canvas = screen.getcanvas()
+
+# Classes
+class Button(turtle.Turtle):
+    def __init__(self, image, id, x, y, image_size, on_screen, on_id, off_id):
+        turtle.Turtle.__init__(self)
+        self.penup()
+        screen.register_shape(f"assets/buttons/{image}.gif")
+        self.shape(f"assets/buttons/{image}.gif")
+        self.goto(x, y)
+        self.id = id
+        self.on_id = on_id
+        self.off_id = off_id
+        self.left_bottom = [x - (image_size[0] / 2), y - (image_size[1] / 2)]
+        self.right_top = [x + (image_size[0] / 2), y + (image_size[1] / 2)]
+
+        self.on_screen = on_screen
+        if not on_screen:
+            self.hideturtle()
+
+        self.area = {"left_bottom":[self.left_bottom[0], self.left_bottom[1]], "right_top":[self.right_top[0], self.right_top[1]]}
+
+    def checkif_clicked(self, x, y):
+        global clicked
+        global click_delay
+        global row
+        global code
+        global color_selected
+        global gamein_progress
+        if self.isvisible():
+            if x >= self.area["left_bottom"][0] and x <= self.area["right_top"][0] and y >= self.area["left_bottom"][1] and y <= self.area["right_top"][1] and time.time() - click_delay > 0.1:
+                clicked = self.id
+
+                if clicked == "new":
+                    for i in code_pieces:
+                        unused.append(i)
+                    for i in info_pieces:
+                        unused.append(i)
+                    for i in board:
+                        if i.id[1] == -1:
+                            unused.append(i)
+                        else:
+                            i.shape(f"assets/pieces/empty.gif")
+
+                    row = 9
+
+                    clicked = "play"
+
+                # Run the specific thing for each id
+                if self.id == "play":
+                    new_scene()
+                elif self.id == "back":
+                    color_selected = ""
+                    for button in color_pieces:
+                            button.reset_color()
+                    new_scene()
+                elif self.id == "quit":
+                    screen.bye()
+                elif self.id == "guess":
+                    if row_finished():
+
+                        check_code()
+                        if row > 0:
+                            row -= 1
+                        arrow_list[0].change_position(row)
+                elif self.id == "random":
+                    code = []
+                    for i in range(4):
+                        code.append(colors[random.randint(0, 5)])
+                    gamein_progress = True
+                    arrow_list[0].change_position(row)
+                    new_scene()
+                elif self.id == "custom":
+                    code = ["", "", "", ""]
+                    create_code_pieces()
+                    new_scene()
+                elif self.id == "done":
+                    if not code.__contains__(""):
+                        color_selected = ""
+                        for button in color_pieces:
+                            button.reset_color()
+                        gamein_progress = True
+                        arrow_list[0].change_position(row)
+                        new_scene()
+                elif self.id == "play2":
+                    new_scene()
+                elif self.id == "back2":
+                    new_scene()
+                elif self.id == "new":
+                    gamein_progress = False
+                    new_scene()
+                click_delay = time.time()
+
+    def check_visibility(self):
+        if self.on_screen:
+            self.showturtle()
+        else:
+            self.hideturtle()
+
+class Board_Piece(turtle.Turtle):
+    def __init__(self, image, id, x, y, distance, on_screen, on_id, off_id):
+        turtle.Turtle.__init__(self)
+        self.penup()
+        screen.register_shape(f"assets/pieces/{image}.gif")
+        self.shape(f"assets/pieces/{image}.gif")
+        self.id = id
+        self.on_id = on_id
+        self.off_id = off_id
+        self.image = image
+
+        self.left_top = [-160, 370]
+        self.x = ((x * distance) + self.left_top[0]) + distance/2
+        self.y = (self.left_top[1] - (y * distance)) - distance/2
+        self.goto(self.x, self.y)
+        
+        self.on_screen = on_screen
+        if not on_screen:
+            self.hideturtle()
+
+        self.area = {"left_bottom":[(x * distance) + self.left_top[0], self.left_top[1] - (y * distance) - distance], "right_top":[(x * distance) + self.left_top[0] + distance, self.left_top[1] - (y * distance)]}
+
+    def check_visibility(self):
+        if self.on_screen:
+            self.showturtle()
+        else:
+            self.hideturtle()
+
+    def checkif_clicked(self, x, y):
+        global click_delay
+        global color_selected
+        if self.isvisible():
+            if x >= self.area["left_bottom"][0] and x <= self.area["right_top"][0] and y >= self.area["left_bottom"][1] and y <= self.area["right_top"][1] and time.time() - click_delay > 0.1:
+                
+                if not color_selected == "" and row == self.id[1]:
+                    screen.register_shape(f"assets/pieces/{color_selected}.gif")
+                    self.shape(f"assets/pieces/{color_selected}.gif")
+                    self.image = color_selected
+
+                click_delay = time.time()
+
+    def checkif_filled(self):
+        if row == self.id[1]:
+            if self.shape() == f"assets/pieces/empty.gif":
+                return 0
+            else:
+                return 1
+        else:
+            return 0
+
+class Color(turtle.Turtle):
+    def __init__(self, image, id, x, y, distance, on_screen, on_id, off_id):
+        turtle.Turtle.__init__(self)
+        self.penup()
+
+        self.image = f"assets/colors/{image}.gif"
+        self.image2 = f"assets/colors/{image}_selected.gif"
+        screen.register_shape(self.image)
+        screen.register_shape(self.image2)
+        self.shape(self.image)
+
+        self.id = id
+        self.on_id = on_id
+        self.off_id = off_id
+
+        self.left_top = [-500, 300]
+        self.x = ((x * distance) + self.left_top[0]) + distance/2
+        self.y = (self.left_top[1] - (y * distance)) - distance/2
+        self.goto(self.x, self.y)
+
+        self.on_screen = on_screen
+        if not on_screen:
+            self.hideturtle()
+
+        self.area = {"left_bottom":[(x * distance) + self.left_top[0], self.left_top[1] - (y * distance) - distance], "right_top":[(x * distance) + self.left_top[0] + distance, self.left_top[1] - (y * distance)]}
+
+    def check_visibility(self):
+        if self.on_screen:
+            self.showturtle()
+        else:
+            self.hideturtle()
+
+    def checkif_clicked(self, x, y):
+            global click_delay
+            global color_selected
+            global row
+            if self.isvisible():
+                if x >= self.area["left_bottom"][0] and x <= self.area["right_top"][0] and y >= self.area["left_bottom"][1] and y <= self.area["right_top"][1] and time.time() - click_delay > 0.1 and row >= 0:
+
+                    if not color_selected == "":
+                        for button in color_pieces:
+                            button.reset_color()
+
+                    color_selected = self.id
+                    self.shape(self.image2)
+
+                    click_delay = time.time()
+
+    def reset_color(self):
+        self.shape(self.image)
+
+class Guess_Info(turtle.Turtle):
+    def __init__(self, x, y, image, on_id, off_id):
+        turtle.Turtle.__init__(self)
+        self.penup()
+        screen.register_shape(f"assets/piece data/{image}.gif")
+        self.shape(f"assets/piece data/{image}.gif")
+        self.goto(x, y)
+        self.off_id = off_id
+        self.on_id = on_id
+        self.id = None
+
+    def check_visibility(self):
+        if self.on_screen:
+            self.showturtle()
+        else:
+            self.hideturtle()
+
+class Custom_Code(turtle.Turtle):
+    def __init__(self, x, y, id, image, distance, on_screen, on_id, off_id):
+        turtle.Turtle.__init__(self)
+        self.penup()
+        screen.register_shape(f"assets/code/{image}.gif")
+        self.shape(f"assets/code/{image}.gif")
+        self.on_id = on_id
+        self.off_id = off_id
+        self.image = image
+        self.id = id
+
+        self.left_top = [-200, 100]
+        self.x = ((x * distance) + self.left_top[0]) + distance/2
+        self.y = (self.left_top[1] - (y * distance)) - distance/2
+        self.goto(self.x, self.y)
+
+        self.on_screen = on_screen
+        if not on_screen:
+            self.hideturtle()
+
+        self.area = {"left_bottom":[(x * distance) + self.left_top[0], self.left_top[1] - (y * distance) - distance], "right_top":[(x * distance) + self.left_top[0] + distance, self.left_top[1] - (y * distance)]}
+
+    def checkif_clicked(self, x, y):
+        global click_delay
+        global color_selected
+        global code
+        if self.isvisible():
+            if x >= self.area["left_bottom"][0] and x <= self.area["right_top"][0] and y >= self.area["left_bottom"][1] and y <= self.area["right_top"][1] and time.time() - click_delay > 0.1:
+                if not color_selected == "":
+                    screen.register_shape(f"assets/code/{color_selected}.gif")
+                    self.shape(f"assets/code/{color_selected}.gif")
+                    self.image = color_selected
+                    code[self.id] = self.image
+
+                click_delay = time.time()
+
+    def check_visibility(self):
+        if self.on_screen:
+            self.showturtle()
+        else:
+            self.hideturtle()
+
+class Arrow(turtle.Turtle):
+    def __init__(self, y, id, distance, on_screen, on_id, off_id):
+        turtle.Turtle.__init__(self)
+        self.penup()
+        screen.register_shape(f"assets/arrow.gif")
+        self.shape(f"assets/arrow.gif")
+        self.id = id
+        self.on_id = on_id
+        self.off_id = off_id
+        self.distance = distance
+
+        self.on_screen = on_screen
+        if not on_screen:
+            self.hideturtle()
+
+        self.left_top = [-240, 370]
+        self.change_position(y)
+
+    def change_position(self, newy):
+        self.x = self.left_top[0] + self.distance/2
+        self.y = (self.left_top[1] - (newy * self.distance)) - self.distance/2
+        self.goto(self.x, self.y)
+
+    def check_visibility(self):
+        if self.on_screen:
+            self.showturtle()
+        else:
+            self.hideturtle()
+
+class Text(turtle.Turtle):
+    def __init__(self, image, id, x, y, on_screen, on_id, off_id):
+        turtle.Turtle.__init__(self)
+        self.penup()
+        screen.register_shape(f"assets/text/{image}.gif")
+        self.shape(f"assets/text/{image}.gif")
+        self.image = image
+        self.on_id = on_id
+        self.off_id = off_id
+        self.id = id
+        self.goto(x, y)
+
+        self.on_screen = on_screen
+        if not on_screen:
+            self.hideturtle()
+
+    def check_visibility(self):
+        if self.on_screen:
+            self.showturtle()
+        else:
+            self.hideturtle()
+
+# Functions
+def create_code_pieces():
+    for i in range(4):
+        code_pieces.append(Custom_Code(i, 0, i, "empty", 200, True, [], ["done", "back"]))
+
+def row_finished():
+    filled = 0
+    for piece in board:
+        filled += piece.checkif_filled()
+    
+    if filled == 4:
+        return True
+
+def check_code():
+    global row
+    used = list()
+    guess = list()
+    data = list()
+    for piece in board:
+        if piece.id[1] == row:
+            guess.append(piece.image)
+
+    icounter = 0
+    for i in guess:
+        if i == code[icounter]:
+            data.append("correct")
+            used.append(icounter)
+        icounter += 1
+
+    icounter = 0
+    for i in guess:
+        if i == code[icounter]:
+            icounter += 1
+            continue
+        
+        jcounter = 0
+        for j in code:
+            if used.__contains__(jcounter):
+                jcounter += 1
+                continue
+
+            if j == i:
+                data.append("place")
+                used.append(jcounter)
+                break
+
+            jcounter += 1
+        icounter += 1
+
+    # Make the visual stuff idk
+    correct = data.count("correct")
+    location = data.count("place")
+
+    index = 0
+    for i in range(correct):
+        info_pieces.append(Guess_Info(180 + (index * 40), (370 - (row * 80)) - 40, "correct", ["random", "done", "play2"], ["back2"]))
+        index += 1
+
+    for i in range(location):
+        info_pieces.append(Guess_Info(180 + (index * 40), (370 - (row * 80)) - 40, "place", ["random", "done", "play2"], ["back2"]))
+        index += 1
+
+    # Check to see if you won or lost
+    if correct == 4:
+        row = -9
+        for i in range(4):
+            board.append(Board_Piece(code[i], [i, -1], i, -1, 80, True, ["random", "done", "play2"], ["back2"]))
+
+        for button in color_pieces:
+            button.reset_color()
+
+    if row == 0:
+        row = -9
+        for i in range(4):
+            board.append(Board_Piece(code[i], [i, -1], i, -1, 80, True, ["random", "done", "play2"], ["back2"]))
+
+        for button in color_pieces:
+                button.reset_color()
+
+def click(x, y):
+    for button in buttons:
+        button.checkif_clicked(x, y)
+
+    for piece in board:
+        piece.checkif_clicked(x, y)
+
+    for color in color_pieces:
+        color.checkif_clicked(x, y)
+
+    for thing in code_pieces:
+        thing.checkif_clicked(x, y)
+
+def list_checking(list):
+    for object in list:
+        if object.on_id.__contains__(clicked):
+            object.on_screen = True
+            object.check_visibility()
+        elif object.off_id.__contains__(clicked):
+            object.on_screen = False
+            object.check_visibility()
+
+        # Stupid stuff
+        if object.id == "play2" and (clicked == "back2"):
+            object.on_screen = True
+            object.check_visibility()
+
+        if object.id == "back2" and (clicked == "random" or clicked == "done"):
+            object.on_screen = True
+            object.check_visibility()
+
+def new_scene():
+    global clicked
+    list_checking(buttons)
+
+    list_checking(board)
+   
+    list_checking(color_pieces)
+
+    list_checking(info_pieces)
+
+    list_checking(code_pieces)
+
+    list_checking(arrow_list)
+
+    list_checking(texts)
+
+    clicked = ""
+
+# Objects
+buttons.append(Button("play", "play", 0, 0, [300, 150], True, ["back"], ["play"]))
+buttons.append(Button("back", "back", -500, 350, [150, 75], False, ["custom", "play"], ["back", "done", "random"]))
+buttons.append(Button("play2", "play2", 0, 0, [300, 150], False, [], ["play2", "play"]))
+buttons.append(Button("back2", "back2", -500, 350, [150, 75], False, ["play2"], ["back2"]))
+
+buttons.append(Button("quit", "quit", 0, -300, [300, 150], True, ["back", "back2"], ["play", "play2"]))
+
+buttons.append(Button("guess", "guess", 500, 400, [150, 75], False, ["random", "done", "play2"], ["back2"]))
+
+buttons.append(Button("random", "random", 0, 50, [300, 150], False, ["play"], ["random", "custom", "back"]))
+buttons.append(Button("custom", "custom", 0, -250, [300, 150], False, ["play"], ["random", "custom", "back"]))
+buttons.append(Button("done", "done", 0, -300, [150, 75], False, ["custom"], ["back", "done"]))
+
+buttons.append(Button("new_game", "new", 0, 300, [300, 150], False, ["back2"], ["play2", "play", "new"]))
+
+# Board
+for x in range(board_size[0]):
+    for y in range(board_size[1]):
+        board.append(Board_Piece("empty", [x, y], x, y, 80, False, ["random", "done", "play2"], ["back2"]))
+
+# Color panel
+for color in colors:
+    color_pieces.append(Color(color, color, 0, colors.index(color), 100, False, ["random", "custom", "play2"], ["back", "back2"]))
+
+# The single arrow
+arrow_list.append(Arrow(row, "arrow", 80, False, ["done", "random", "play2"], ["back2"]))
+
+# Text
+texts.append(Text("code", 0, 0, 300, False, ["play", "new"], ["random", "back", "custom"]))
+
+# Main loop
+screen.onscreenclick(click, btn=1, add=None)
+while True:
+    try:
+        screen.update()
+    except:
+        quit()
+
+    for i in unused:
+        i.hideturtle()
