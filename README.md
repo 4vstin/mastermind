@@ -2,7 +2,7 @@
 Mastermind is a strategy board game created in 1970 by the company Pressman, I recreated this game in Python for fun.
 
 ## How to play
-1. Download and Install the Python coding language at https://www.python.org/.
+1. Download and Install the Python coding language at https://www.python.org/. (Optional)
 2. Download the [mastermind_installer1.0.4.exe](https://github.com/4vstin/mastermind/raw/main/mastermind_installer1.0.4.exe) file.
 You may have to allow the file through your antivirus software.
 3. Locate the file that the installer downloaded.
