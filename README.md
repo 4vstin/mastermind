@@ -1,3 +1,4 @@
+# This project is discontinued
 # Mastermind
 Mastermind is a strategy board game created in 1970 by the company Pressman, I recreated this game in Python for fun.
 (Source code not availiable for version 1.2.3 (because I am lazy and it is basically the same thing as 1.2))
